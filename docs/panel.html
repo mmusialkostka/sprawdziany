@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel nauczyciela – sprawdziany online</title>
+<style>
+  :root{--ink:#1b1b1b;--muted:#5d5d5d;--desk:#eeece7;--paper:#fff;--accent:#7a1f1f;
+    --ok:#1f6b3a;--okbg:#e7f3ea;--bad:#a32020;--badbg:#fbeaea;--line:#d6d2c8;--warn:#7a5a00;--warnbg:#fff3cd}
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--desk);color:var(--ink);font:15px/1.45 Aptos,"Segoe UI",Calibri,Carlito,Arial,sans-serif}
+  header.gora{background:#2b2b2b;color:#fff;padding:12px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  header.gora h1{margin:0;font-size:18px}
+  header.gora .sub{color:#c9c9c9;font-size:13px}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 40px}
+  .karta{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px}
+  button,select,input{font:inherit}
+  button{padding:7px 14px;border-radius:6px;border:1px solid #444;background:#fff;cursor:pointer}
+  button.glowny{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  button:disabled{opacity:.45;cursor:default}
+  select,input[type=search]{padding:6px 8px;border:1px solid #999;border-radius:6px;background:#fff}
+  .pasek-narz{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+  .pasek-narz .odstep{flex:1}
+  h2.sekcja{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+
+  /* tematy */
+  .tematy{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .tematy button{border-radius:999px;border-color:#bbb;background:#fff}
+  .tematy button.akt{background:#2b2b2b;border-color:#2b2b2b;color:#fff;font-weight:700}
+  .tematy button .ile{opacity:.7;font-weight:400;margin-left:4px}
+
+  /* testy */
+  .testy{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+  .test{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+  .test:hover{border-color:#999}
+  .test.akt{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+  .test .temat{font-size:12px;color:var(--muted)}
+  .test .nazwa{font-weight:700;font-size:16px;line-height:1.25}
+  .test .liczby{font-size:13px;color:var(--muted)}
+  .test .akcje{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .test .akcje button{padding:5px 10px;font-size:14px}
+  .przel{border-radius:999px!important;font-weight:700}
+
+  .przel.otw{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+  .przel.zam{background:#f1f1f1;border-color:#999;color:#555}
+
+  .zakladki button{border-radius:6px 6px 0 0;border-bottom:0;background:#e4e1da}
+  .zakladki button.akt{background:var(--paper);font-weight:700}
+  table{border-collapse:collapse;width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+  th{font-size:13px;color:var(--muted);font-weight:600;white-space:nowrap}
+  th[data-sort]{cursor:pointer;user-select:none} th[data-sort]:hover{color:var(--ink)} th.sort-akt{color:var(--ink)}
+  td.liczba,th.liczba{text-align:right;white-space:nowrap}
+  tr.wiersz{cursor:pointer} tr.wiersz:hover{background:#f6f4ef}
+  .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;background:#eee;color:#333}
+  .tag.do{background:var(--warnbg);color:var(--warn)} .tag.gotowe{background:var(--okbg);color:var(--ok)}
+  .tag.wyj{background:var(--badbg);color:var(--bad);font-weight:700}
+  .tag.test{background:#e3e8f4;color:#23407a}
+  .wyjscia{background:var(--badbg);border-left:3px solid var(--bad);padding:8px 12px;margin:10px 0 4px}
+  .wyjscia.czysto{background:var(--okbg);border-color:var(--ok)}
+  .wyjscia ol{margin:4px 0 0;padding-left:22px}
+  .el{border-top:1px solid var(--line);padding:12px 0}
+  .el:first-child{border-top:0}
+  .el h3{margin:0 0 6px;font-size:15px}
+  .odp{background:#f7f6f2;border-left:3px solid #8a8a8a;padding:6px 10px;white-space:pre-wrap;margin:4px 0}
+  .odp .lab{color:var(--muted);font-size:13px}
+  .pusta{color:#999;font-style:italic}
+  .klucz{font-size:13px;color:#24452f;background:var(--okbg);border-radius:6px;padding:6px 10px;margin:6px 0}
+  .ocena{display:flex;gap:6px;align-items:center;margin-top:6px}
+  .ocena button{min-width:44px;font-weight:700}
+  .ocena button.wyb0{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+  .ocena button.wyb{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+  .auto td{padding:4px 8px} .auto .dobra{color:var(--ok)} .auto .zla{color:var(--bad);font-weight:700}
+  .podsum{display:flex;flex-wrap:wrap;gap:18px;font-size:15px}
+  .podsum b{font-size:20px}
+  .komunikat{min-height:20px;font-size:13px;color:var(--muted)}
+  .logowanie{max-width:380px;margin:60px auto}
+  .logowanie input{width:100%;padding:8px 10px;border:1px solid #999;border-radius:6px;margin:8px 0 12px}
+  .blad{color:var(--bad)}
+  .nawig{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+
+  /* kod QR na rzutnik */
+  #qr{position:fixed;inset:0;z-index:50;background:#141414;color:#f2efe8;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2.2vh;padding:3vh 16px;text-align:center}
+  #qr .temat{font-size:clamp(16px,2.6vh,28px);color:#c9c2b4;margin:0}
+  #qr h2{margin:0;font-size:clamp(28px,6vh,64px);line-height:1.1}
+  #qr .kod{width:min(58vh,82vw);aspect-ratio:1;background:#fff;padding:1.4vh;border-radius:10px}
+  #qr .kod svg{width:100%;height:100%;display:block}
+  #qr .kodtekst{font-size:clamp(18px,3vh,32px);margin:0;color:#c9c2b4} #qr .kodtekst b{color:#fff;letter-spacing:.18em;font-size:1.2em}
+  #qr .brak{width:min(58vh,82vw);aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:2px dashed #555;border-radius:10px;
+    padding:20px;font-size:clamp(16px,2.6vh,26px);color:#c9c2b4}
+  #qr .adres{font-size:clamp(14px,2.3vh,24px);font-weight:700;color:#f1d27a;word-break:break-all;margin:0}
+  #qr .dol{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+  #qr button{background:transparent;color:#f2efe8;border-color:#777}
+  #qr .przel.otw{background:#1f5a2e;border-color:#2f8a47;color:#fff}
+  #qr .przel.zam{background:#5a1414;border-color:#a33;color:#fff}
+  #qr .zamknij{position:absolute;top:14px;right:16px;font-size:20px;line-height:1;padding:8px 13px}
+  @media print{header.gora,.pasek-narz,.zakladki,.nawig,.ocena,.tematy,.testy{display:none!important} body{background:#fff} .karta{border:0}}
+</style>
+</head>
+<body>
+<header class="gora">
+  <div><h1>Panel nauczyciela</h1><div class="sub">Sprawdziany, quizy i gry online</div></div>
+  <div class="sub" id="status"></div>
+</header>
+
+<div class="wrap">
+  <div class="karta logowanie" id="ekran-logowania">
+    <h2 style="margin-top:0">Logowanie</h2>
+    <label for="haslo">Hasło do panelu</label>
+    <input type="password" id="haslo" autocomplete="current-password">
+    <button class="glowny" id="btn-zaloguj">Zaloguj</button>
+    <p class="komunikat" id="kom-log"></p>
+  </div>
+
+  <div id="ekran-panelu" hidden>
+    <div class="tematy" id="tematy"></div>
+    <div class="testy" id="testy"></div>
+
+    <div class="pasek-narz" style="margin-bottom:12px">
+      <label>Test: <select id="filtr-test"></select></label>
+      <label>Klasa: <select id="filtr-klasa"></select></label>
+      <label>Uczeń: <input type="search" id="filtr-imie" placeholder="nazwisko…" size="16"></label>
+      <label>Sortuj: <select id="sortuj">
+        <option value="nazwisko">nazwisko</option><option value="klasa">klasa</option><option value="test">test</option>
+        <option value="oddano">data oddania</option><option value="suma">wynik %</option><option value="wyjscia">wyjścia ze strony</option><option value="status">status oceny</option>
+      </select></label>
+      <button id="btn-kierunek" title="Zmień kierunek sortowania">↑ rosnąco</button>
+      <span class="odstep"></span>
+      <button id="btn-odswiez">Odśwież</button>
+      <button id="btn-csv">CSV</button>
+      <button id="btn-wyloguj">Wyloguj</button>
+    </div>
+    <div class="zakladki" id="zakladki">
+      <button data-widok="lista" class="akt">Uczniowie</button><button data-widok="zadania">Ocenianie po zadaniach</button>
+    </div>
+    <div class="karta" id="widok" style="border-top-left-radius:0"></div>
+    <p class="komunikat" id="kom"></p>
+  </div>
+</div>
+
+<div id="qr" hidden role="dialog" aria-modal="true">
+  <button class="zamknij" id="qr-zamknij" title="Zamknij (Esc)">✕</button>
+  <p class="temat" id="qr-temat"></p>
+  <h2 id="qr-nazwa"></h2>
+  <div class="kod" id="qr-kod"></div>
+  <p class="kodtekst" id="qr-kodtekst"></p>
+  <p class="adres" id="qr-adres"></p>
+  <div class="dol"><button class="przel" id="qr-przel"></button></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="wspolne.js"></script>
+<script src="katalog.js"></script>
+<script>
+(function(){
+  "use strict";
+  var ADRES = window.SKRYPT;
+  var KATALOG = window.KATALOG || [];
+  var SESJA = "spr-panel-haslo", FILTRY = "spr-panel-filtry";
+  var TESTY = {}, OTWARTE = {}, KODY = {}, prace = [], widok = "lista", wybrany = null, wybraneZadanie = null, qrTest = null;
+
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function komunikat(t, blad){ var k = $("kom"); k.textContent = t; k.className = "komunikat" + (blad ? " blad" : ""); }
+  function zapytanie(dane){
+    return fetch(ADRES, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(dane)})
+      .then(function(r){ return r.json(); });
+  }
+  function haslo(){ try { return sessionStorage.getItem(SESJA) || ""; } catch(e){ return ""; } }
+  function kat(id){ return KATALOG.find(function(k){ return k.id === id; }) || {id:id, nazwa:id, temat:"(inne)"}; }
+
+  // ---------- filtry (zapamiętane) ----------
+  var f = (function(){ try { return JSON.parse(localStorage.getItem(FILTRY)) || {}; } catch(e){ return {}; } })();
+  f = Object.assign({temat:"", test:"", klasa:"", imie:"", pole:"nazwisko", kier:1}, f);
+  function zapiszFiltry(){ try { localStorage.setItem(FILTRY, JSON.stringify(f)); } catch(e){} }
+  function tematy(){ return Array.from(new Set(KATALOG.map(function(k){ return k.temat; }))); }
+  function testyTematu(){ return KATALOG.filter(function(k){ return !f.temat || k.temat === f.temat; }); }
+
+  // ---------- punktacja ----------
+  function kl(p){ return TESTY[p.test] && TESTY[p.test].klucz; }
+  function maxEl(e){ return e.max || 1; }
+  function punktyAuto(p, g){
+    var n = 0;
+    Object.keys(g.pola).forEach(function(k){ if ((p.odp[k] || "") === g.pola[k]) n++; });
+    for (var i = 0; i < g.prog.length; i++) if (n >= g.prog[i][0]) return g.prog[i][1];
+    return 0;
+  }
+  function wynik(p){
+    var K = kl(p), auto = 0, autoMax = 0, otw = 0, otwMax = 0, ocenione = 0;
+    K.auto.forEach(function(g){ auto += punktyAuto(p, g); autoMax += g.max; });
+    K.otwarte.forEach(function(e){ otwMax += maxEl(e); var v = p.ocena[e.id]; if (typeof v === "number"){ otw += v; ocenione++; } });
+    var suma = auto + otw;
+    return {auto:auto, autoMax:autoMax, otw:otw, otwMax:otwMax, ocenione:ocenione, gotowe: ocenione === K.otwarte.length,
+            suma:suma, max:K.max, proc: K.max ? Math.round(suma / K.max * 100) : 0};
+  }
+  function opis(g, k, v){
+    if (!v) return "–";
+    var o = g.opisy && g.opisy[k];
+    if (!o) return v;
+    if (g.kolejnosc) return v.split("").map(function(l){ return o[l] || l; }).join(" → ");
+    return o[v] || v;
+  }
+
+  // ---------- wyjścia ze strony ----------
+  function kontrola(p){ return p.odp._kontrola || null; }
+  function czas(s){ return s >= 60 ? Math.floor(s / 60) + " min " + (s % 60) + " s" : s + " s"; }
+  function godzina(ms){ return new Date(ms).toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit", second:"2-digit"}); }
+  function sumaPoza(k){ return k.wyjscia.reduce(function(a, w){ return a + w.s; }, 0); }
+  function tagWyjsc(p){
+    var k = kontrola(p);
+    if (!k) return '<span class="pusta">–</span>';
+    return k.wyjscia.length ? '<span class="tag wyj" title="Łącznie poza stroną: ' + czas(sumaPoza(k)) + '">' + k.wyjscia.length + '</span>' : '0';
+  }
+  function opisWyjsc(p){
+    var k = kontrola(p);
+    if (!k) return '<div class="wyjscia czysto">Opuszczanie strony: brak danych.</div>';
+    var otw = k.otwarcia ? ' Strona była otwierana ponownie w trakcie pisania: ' + k.otwarcia + ' raz' + (k.otwarcia === 1 ? '' : 'y') + '.' : '';
+    if (!k.wyjscia.length) return '<div class="wyjscia czysto"><b>Uczeń nie opuszczał strony.</b>' + otw + '</div>';
+    return '<div class="wyjscia"><b>Wyjścia ze strony: ' + k.wyjscia.length + '</b>, łącznie poza stroną ' + czas(sumaPoza(k)) + '.' + otw +
+      '<ol>' + k.wyjscia.map(function(w){
+        return '<li>godz. ' + godzina(w.od) + ' – ' + czas(w.s) + (w.z ? ' (strona zamknięta lub odświeżona)' : '') + '</li>';
+      }).join("") + '</ol></div>';
+  }
+
+  // ---------- dane ----------
+  function pobierz(h){
+    $("status").textContent = "Pobieranie…";
+    return zapytanie({akcja:"lista", haslo:h}).then(function(j){
+      if (!j.ok) throw new Error(j.blad === "haslo" ? "Nieprawidłowe hasło." : "Błąd serwera: " + j.blad);
+      TESTY = j.testy || {}; OTWARTE = j.otwarte || {}; KODY = j.kody || {};
+      prace = j.prace.filter(function(p){ return TESTY[p.test]; })
+        .map(function(p){ p.odp = p.odp || {}; p.ocena = p.ocena || {}; return p; });
+      try { sessionStorage.setItem(SESJA, h); } catch(e){}
+      $("ekran-logowania").hidden = true; $("ekran-panelu").hidden = false;
+      $("status").textContent = "Pobrano: " + new Date().toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"});
+      rysuj();
+    });
+  }
+
+  // ---------- przyjmowanie odpowiedzi ----------
+  function przelacz(id){
+    var nowy = !OTWARTE[id];
+    komunikat((nowy ? "Otwieranie" : "Zamykanie") + " przyjmowania odpowiedzi…");
+    return zapytanie({akcja:"status", haslo:haslo(), test:id, otwarte:nowy}).then(function(j){
+      if (!j.ok) throw new Error(j.blad);
+      OTWARTE = j.otwarte || {}; KODY = j.kody || {};
+      komunikat(kat(id).nazwa + ": przyjmowanie odpowiedzi " + (OTWARTE[id] ? "otwarte." : "zamknięte."));
+      rysujTesty(); if (qrTest === id) rysujQr();
+    }).catch(function(e){ komunikat("Nie udało się zmienić (" + e.message + ").", true); });
+  }
+  function przyciskPrzel(id){
+    var o = !!OTWARTE[id];
+    return '<button class="przel ' + (o ? 'otw' : 'zam') + '" data-przel="' + id + '" title="Kliknij, aby ' + (o ? 'zamknąć' : 'otworzyć') + ' przyjmowanie odpowiedzi">' +
+      (o ? '● Przyjmuje odpowiedzi' : '○ Zamknięte') + '</button>';
+  }
+
+  // ---------- podgląd i druk (treść testów jest tylko w Dysku – pobierana z hasłem) ----------
+  var oknaPodgladu = [];
+  function podglad(id){
+    var w = window.open(kat(id).url + "?podglad=1", "_blank");
+    if (!w){ komunikat("Przeglądarka zablokowała nowe okno – zezwól na wyskakujące okna dla tej strony.", true); return; }
+    oknaPodgladu.push(w);
+  }
+  // okno podglądu prosi o hasło – odpowiadamy tylko własnym oknom z tej samej strony
+  window.addEventListener("message", function(e){
+    if (e.origin !== location.origin || !e.data || e.data.typ !== "spr-podglad") return;
+    if (oknaPodgladu.indexOf(e.source) < 0) return;
+    e.source.postMessage({typ:"spr-haslo", haslo:haslo()}, location.origin);
+  });
+  function druk(id, przycisk){
+    var w = window.open("", "_blank");
+    if (w) w.document.write("<p style='font:16px sans-serif;padding:20px'>Pobieranie wersji do druku…</p>");
+    przycisk.disabled = true; komunikat("Pobieranie wersji do druku…");
+    zapytanie({akcja:"druk", haslo:haslo(), test:id}).then(function(j){
+      if (!j.ok) throw new Error(j.blad === "brak-pliku" ? "brak pliku PDF w Dysku" : j.blad);
+      var bin = atob(j.pdf), b = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+      var url = URL.createObjectURL(new Blob([b], {type:"application/pdf"}));
+      if (w) w.location = url; else window.open(url, "_blank");
+      komunikat("");
+    }).catch(function(e){ if (w) w.close(); komunikat("Nie udało się pobrać PDF (" + e.message + ").", true); })
+      .then(function(){ przycisk.disabled = false; });
+  }
+
+  // ---------- kod QR ----------
+  function pokazQr(id){ qrTest = id; rysujQr(); $("qr").hidden = false; $("qr-zamknij").focus(); }
+  function rysujQr(){
+    var k = kat(qrTest);
+    $("qr-temat").textContent = k.temat + (k.przedmiot ? " · " + k.przedmiot : "");
+    $("qr-nazwa").textContent = k.nazwa;
+    var o = !!OTWARTE[qrTest], b = $("qr-przel"), kod = KODY[qrTest];
+    if (o && kod){
+      // kod QR zawiera jednorazowy kod – bez niego test się nie otworzy
+      var url = k.url + "?k=" + kod, q = qrcode(0, "M");
+      q.addData(url); q.make();
+      $("qr-kod").className = "kod";
+      $("qr-kod").innerHTML = q.createSvgTag({cellSize: 10, margin: 0, scalable: true});
+      $("qr-kodtekst").innerHTML = "Kod: <b>" + esc(kod) + "</b>";
+      $("qr-adres").textContent = url.replace(/^https?:\/\//, "");
+    } else {
+      $("qr-kod").className = "brak";
+      $("qr-kod").innerHTML = "Przyjmowanie odpowiedzi jest zamknięte. Otwórz je przyciskiem poniżej – wtedy powstanie kod QR z nowym kodem dostępu.";
+      $("qr-kodtekst").textContent = ""; $("qr-adres").textContent = "";
+    }
+    b.className = "przel " + (o ? "otw" : "zam");
+    b.textContent = o ? "● Przyjmuje odpowiedzi – kliknij, aby zamknąć" : "○ Przyjmowanie zamknięte – kliknij, aby otworzyć";
+  }
+  $("qr-przel").onclick = function(){ przelacz(qrTest); };
+  $("qr-zamknij").onclick = function(){ $("qr").hidden = true; qrTest = null; };
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !$("qr").hidden){ $("qr").hidden = true; qrTest = null; } });
+
+  // ---------- filtrowanie i sortowanie ----------
+  function nazwisko(p){
+    var cz = String(p.imie || "").trim().split(/\s+/);
+    return cz.length > 1 ? cz[cz.length - 1] + " " + cz.slice(0, -1).join(" ") : cz[0];
+  }
+  function bezOgonkow(s){ return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ł/g, "l"); }
+  function wartoscSort(p){
+    switch (f.pole){
+      case "klasa": return p.klasa || "";
+      case "test": return kat(p.test).nazwa;
+      case "oddano": return new Date(p.oddano).getTime() || 0;
+      case "suma": return wynik(p).proc;
+      case "wyjscia": var k = kontrola(p); return k ? k.wyjscia.length : -1;
+      case "status": return wynik(p).gotowe ? 1 : 0;
+      default: return nazwisko(p);
+    }
+  }
+  function porownaj(a, b){
+    var x = wartoscSort(a), y = wartoscSort(b);
+    var w = typeof x === "number" ? x - y : String(x).localeCompare(String(y), "pl", {numeric:true});
+    return w * f.kier || nazwisko(a).localeCompare(nazwisko(b), "pl");
+  }
+  function widoczne(){
+    var ids = testyTematu().map(function(k){ return k.id; }), q = bezOgonkow(f.imie.trim());
+    return prace.filter(function(p){
+      return ids.indexOf(p.test) >= 0 && (!f.test || p.test === f.test) && (!f.klasa || p.klasa === f.klasa) &&
+        (!q || bezOgonkow(p.imie).indexOf(q) >= 0);
+    }).sort(porownaj);
+  }
+
+  // ---------- rysowanie ----------
+  function rysuj(){
+    rysujTematy(); rysujTesty(); rysujFiltry();
+    document.querySelectorAll("#zakladki button").forEach(function(b){ b.classList.toggle("akt", b.dataset.widok === widok && !wybrany); });
+    if (wybrany) return rysujUcznia();
+    if (widok === "zadania") return rysujZadania();
+    rysujListe();
+  }
+  function rysujTematy(){
+    var html = '<button data-temat=""' + (!f.temat ? ' class="akt"' : '') + '>Wszystkie<span class="ile">' + prace.length + '</span></button>';
+    tematy().forEach(function(t){
+      var n = prace.filter(function(p){ return kat(p.test).temat === t; }).length;
+      html += '<button data-temat="' + esc(t) + '"' + (f.temat === t ? ' class="akt"' : '') + '>' + esc(t) + '<span class="ile">' + n + '</span></button>';
+    });
+    $("tematy").innerHTML = html;
+    $("tematy").querySelectorAll("button").forEach(function(b){
+      b.onclick = function(){ f.temat = b.dataset.temat; f.test = ""; wybrany = null; zapiszFiltry(); rysuj(); };
+    });
+  }
+  function rysujTesty(){
+    $("testy").innerHTML = testyTematu().map(function(k){
+      var moje = prace.filter(function(p){ return p.test === k.id; });
+      var doOc = moje.filter(function(p){ return kl(p) && !wynik(p).gotowe; }).length;
+      return '<div class="test' + (f.test === k.id ? ' akt' : '') + '" data-test="' + k.id + '">' +
+        '<span class="temat">' + esc(k.temat) + ' · ' + (k.typ === "gra" ? "gra" : k.typ === "quiz" ? "quiz" : "sprawdzian") + '</span>' +
+        '<span class="nazwa">' + esc(k.nazwa) + '</span>' +
+        '<span class="liczby">Prace: ' + moje.length + (doOc ? ' · do oceny: ' + doOc : '') + '</span>' +
+        '<span class="akcje"><button data-qr="' + k.id + '">Kod QR</button><button data-podglad="' + k.id + '" title="Otwórz test tak, jak widzi go uczeń – bez wysyłania odpowiedzi">Podgląd</button>' + (k.druk ? '<button data-druk="' + k.id + '" title="Wersja papierowa (PDF)">Do druku</button>' : '') + przyciskPrzel(k.id) + '</span></div>';
+    }).join("") || '<p>Brak testów w tym temacie.</p>';
+    $("testy").querySelectorAll(".test").forEach(function(el){
+      el.onclick = function(e){
+        if (e.target.closest("button")) return;
+        f.test = f.test === el.dataset.test ? "" : el.dataset.test; wybrany = null; zapiszFiltry(); rysuj();
+      };
+    });
+    $("testy").querySelectorAll("[data-qr]").forEach(function(b){ b.onclick = function(){ pokazQr(b.dataset.qr); }; });
+    $("testy").querySelectorAll("[data-przel]").forEach(function(b){ b.onclick = function(){ przelacz(b.dataset.przel); }; });
+    $("testy").querySelectorAll("[data-podglad]").forEach(function(b){ b.onclick = function(){ podglad(b.dataset.podglad); }; });
+    $("testy").querySelectorAll("[data-druk]").forEach(function(b){ b.onclick = function(){ druk(b.dataset.druk, b); }; });
+  }
+  function rysujFiltry(){
+    var tt = testyTematu();
+    if (f.test && !tt.some(function(k){ return k.id === f.test; })) f.test = "";
+    $("filtr-test").innerHTML = '<option value="">wszystkie (' + tt.length + ')</option>' +
+      tt.map(function(k){ return '<option value="' + k.id + '"' + (k.id === f.test ? ' selected' : '') + '>' + esc((f.temat ? "" : k.temat + " – ") + k.nazwa) + '</option>'; }).join("");
+    var klasy = Array.from(new Set(prace.map(function(p){ return p.klasa; }))).sort(function(a, b){ return a.localeCompare(b, "pl", {numeric:true}); });
+    if (klasy.indexOf(f.klasa) < 0) f.klasa = "";
+    $("filtr-klasa").innerHTML = '<option value="">wszystkie</option>' + klasy.map(function(k){ return '<option' + (k === f.klasa ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join("");
+    if ($("filtr-imie") !== document.activeElement) $("filtr-imie").value = f.imie;
+    $("sortuj").value = f.pole; $("btn-kierunek").textContent = f.kier > 0 ? "↑ rosnąco" : "↓ malejąco";
+  }
+
+  function rysujListe(){
+    var lista = widoczne();
+    if (!lista.length){ $("widok").innerHTML = "<p>Brak prac dla wybranych filtrów.</p>"; return; }
+    var doOceny = lista.filter(function(p){ return !wynik(p).gotowe; }).length;
+    var kol = [["Uczeń","nazwisko"],["Klasa","klasa"],["Test","test"],["Oddano","oddano"],["Zamknięte",""],["Otwarte",""],["Suma","suma"],["%","suma"],["Wyjścia","wyjscia"],["Status","status"]];
+    var html = '<p class="podsum"><span>Prace: <b>' + lista.length + '</b></span><span>Do dokończenia oceny: <b>' + doOceny + '</b></span></p><table><tr>' +
+      kol.map(function(k, i){
+        var akt = k[1] && k[1] === f.pole && i !== 7, c = (i >= 4 && i <= 8 ? "liczba" : "") + (akt ? " sort-akt" : "");
+        return '<th' + (c ? ' class="' + c.trim() + '"' : '') + (k[1] ? ' data-sort="' + k[1] + '" title="Sortuj"' : '') + '>' + k[0] + (akt ? (f.kier > 0 ? " ▲" : " ▼") : "") + '</th>';
+      }).join("") + '</tr>';
+    lista.forEach(function(p){
+      var w = wynik(p), d = new Date(p.oddano);
+      html += '<tr class="wiersz" data-id="' + esc(p.test + "|" + p.id) + '"><td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
+        '<td><span class="tag test">' + esc(kat(p.test).nazwa) + '</span></td>' +
+        '<td>' + d.toLocaleDateString("pl-PL") + ' ' + d.toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"}) + '</td>' +
+        '<td class="liczba">' + w.auto + ' / ' + w.autoMax + '</td>' +
+        '<td class="liczba">' + w.otw + ' / ' + w.otwMax + (w.gotowe ? '' : ' <span class="pusta">(' + w.ocenione + ' ocen.)</span>') + '</td>' +
+        '<td class="liczba"><b>' + w.suma + '</b> / ' + w.max + '</td><td class="liczba">' + w.proc + '%</td>' +
+        '<td class="liczba">' + tagWyjsc(p) + '</td>' +
+        '<td>' + (w.gotowe ? '<span class="tag gotowe">ocenione</span>' : '<span class="tag do">do oceny</span>') + '</td></tr>';
+    });
+    $("widok").innerHTML = html + '</table>';
+    $("widok").querySelectorAll("th[data-sort]").forEach(function(th){
+      th.onclick = function(){ var pole = th.dataset.sort; f.kier = pole === f.pole ? -f.kier : 1; f.pole = pole; zapiszFiltry(); rysuj(); };
+    });
+    $("widok").querySelectorAll("tr.wiersz").forEach(function(tr){
+      tr.onclick = function(){ wybrany = tr.dataset.id; rysuj(); window.scrollTo(0, $("zakladki").offsetTop - 10); };
+    });
+  }
+
+  function etykieta(e, n){
+    if (e.etykiety && e.etykiety[n]) return e.etykiety[n] + ": ";
+    return /_r$/.test(n) ? "Rozstrzygnięcie: " : /_u$/.test(n) ? "Uzasadnienie: " : "";
+  }
+  function pokazOdp(p, e){
+    return e.pola.map(function(n){
+      var v = (p.odp[n] || "").trim(), lab = etykieta(e, n);
+      return '<div class="odp">' + (lab ? '<span class="lab">' + esc(lab) + '</span>' : '') + (v ? esc(v) : '<span class="pusta">brak odpowiedzi</span>') + '</div>';
+    }).join("");
+  }
+  function przyciski(p, e){
+    var v = p.ocena[e.id], h = '<div class="ocena" data-klucz="' + esc(p.test + "|" + p.id) + '" data-el="' + e.id + '"><span>Punkty:</span>';
+    for (var i = 0; i <= maxEl(e); i++) h += '<button data-v="' + i + '" class="' + (v === i ? (i ? "wyb" : "wyb0") : "") + '">' + i + '</button>';
+    return h + '</div>';
+  }
+  function znajdzPrace(klucz){ return prace.find(function(x){ return x.test + "|" + x.id === klucz; }); }
+  var kolejka = Promise.resolve();
+  function ocen(p, idEl, v){
+    p.ocena[idEl] = v;
+    var w = wynik(p);
+    komunikat("Zapisywanie…");
+    var dane = {akcja:"ocena", haslo:haslo(), test:p.test, id:p.id, ocena:p.ocena, suma: w.gotowe ? w.suma : ""};
+    kolejka = kolejka.then(function(){ return zapytanie(dane); }).then(function(j){
+      if (!j.ok) throw new Error(j.blad);
+      komunikat("Zapisano ocenę: " + p.imie + ".");
+    }).catch(function(e){ komunikat("Nie udało się zapisać oceny (" + e.message + "). Spróbuj ponownie.", true); });
+  }
+  function podepnijPrzyciski(poKliknieciu){
+    $("widok").querySelectorAll(".ocena button").forEach(function(b){
+      b.onclick = function(){
+        var box = b.parentNode, p = znajdzPrace(box.dataset.klucz);
+        ocen(p, box.dataset.el, Number(b.dataset.v));
+        box.querySelectorAll("button").forEach(function(x){ x.className = ""; });
+        b.className = Number(b.dataset.v) ? "wyb" : "wyb0";
+        if (poKliknieciu) poKliknieciu(p);
+      };
+    });
+  }
+
+  function rysujUcznia(){
+    var lista = widoczne(), i = lista.findIndex(function(x){ return x.test + "|" + x.id === wybrany; });
+    var p = lista[i] || znajdzPrace(wybrany);
+    if (!p){ wybrany = null; return rysuj(); }
+    var K = kl(p);
+    var html = '<div class="nawig"><button id="n-wroc">← Lista</button>' +
+      '<button id="n-poprz"' + (i > 0 ? '' : ' disabled') + '>‹ Poprzedni</button>' +
+      '<button id="n-nast"' + (i >= 0 && i < lista.length - 1 ? '' : ' disabled') + '>Następny ›</button>' +
+      '<button id="n-nieoc">Następny nieoceniony</button><span style="flex:1"></span><button id="n-usun">Usuń pracę</button></div>' +
+      '<h2 style="margin:4px 0">' + esc(p.imie || "(bez nazwiska)") + ' <span style="font-weight:400;color:#666">· ' + esc(p.klasa) + '</span></h2>' +
+      '<p style="margin:0 0 6px"><span class="tag test">' + esc(kat(p.test).temat + " – " + kat(p.test).nazwa) + '</span></p>' +
+      '<p class="podsum" id="podsum-ucznia"></p>' + opisWyjsc(p);
+    html += '<h3>Zadania zamknięte (sprawdzone automatycznie)</h3><table class="auto">';
+    K.auto.forEach(function(g){
+      var odp = Object.keys(g.pola).map(function(k){
+        var v = p.odp[k] || "", ok = v === g.pola[k];
+        return '<span class="' + (ok ? "dobra" : "zla") + '">' + esc(g.etykiety[k]) + ': ' + esc(opis(g, k, v)) + (ok ? '' : ' (klucz: ' + esc(opis(g, k, g.pola[k])) + ')') + '</span>';
+      }).join("; ");
+      html += '<tr><td>' + esc(g.tytul) + '</td><td>' + odp + '</td><td class="liczba"><b>' + punktyAuto(p, g) + '</b> / ' + g.max + '</td></tr>';
+    });
+    html += '</table><h3 style="margin-top:18px">Zadania otwarte</h3>';
+    K.otwarte.forEach(function(e){
+      html += '<div class="el"><h3>' + esc(e.tytul) + (maxEl(e) > 1 ? ' <span class="pusta">(0–' + maxEl(e) + ' pkt)</span>' : '') + '</h3>' +
+        pokazOdp(p, e) + '<div class="klucz">' + esc(e.klucz) + '</div>' + przyciski(p, e) + '</div>';
+    });
+    $("widok").innerHTML = html;
+    function podsum(){
+      var w = wynik(p);
+      $("podsum-ucznia").innerHTML = '<span>Zamknięte: <b>' + w.auto + '</b> / ' + w.autoMax + '</span><span>Otwarte: <b>' + w.otw + '</b> / ' + w.otwMax +
+        ' (ocenione ' + w.ocenione + ' z ' + K.otwarte.length + ')</span><span>Razem: <b>' + w.suma + '</b> / ' + w.max + ' (' + w.proc + '%)</span>';
+    }
+    podsum(); podepnijPrzyciski(podsum);
+    function idz(x){ wybrany = x.test + "|" + x.id; rysuj(); }
+    $("n-wroc").onclick = function(){ wybrany = null; rysuj(); };
+    $("n-poprz").onclick = function(){ idz(lista[i - 1]); };
+    $("n-nast").onclick = function(){ idz(lista[i + 1]); };
+    $("n-nieoc").onclick = function(){
+      var n = lista.slice(i + 1).concat(lista.slice(0, Math.max(i, 0))).find(function(x){ return x !== p && !wynik(x).gotowe; });
+      if (n) idz(n); else komunikat("Wszystkie prace są ocenione.");
+    };
+    $("n-usun").onclick = function(){
+      if (!confirm("Usunąć pracę: " + (p.imie || "bez nazwiska") + " (" + kat(p.test).nazwa + ")? Tej operacji nie można cofnąć.")) return;
+      zapytanie({akcja:"usun", haslo:haslo(), test:p.test, id:p.id}).then(function(j){
+        if (!j.ok) throw new Error(j.blad);
+        prace = prace.filter(function(x){ return x !== p; }); wybrany = null; rysuj(); komunikat("Usunięto pracę.");
+      }).catch(function(e){ komunikat("Nie udało się usunąć (" + e.message + ").", true); });
+    };
+  }
+
+  function rysujZadania(){
+    if (!f.test){
+      $("widok").innerHTML = '<p>Wybierz test (kafelek powyżej albo lista „Test”), aby oceniać jedno zadanie u wszystkich uczniów.</p>'; return;
+    }
+    var K = TESTY[f.test] && TESTY[f.test].klucz;
+    if (!K){ $("widok").innerHTML = '<p>Brak klucza dla tego testu.</p>'; return; }
+    var e = K.otwarte.find(function(x){ return x.id === wybraneZadanie; }) || K.otwarte[0];
+    if (!e){ $("widok").innerHTML = '<p>Ten test nie ma zadań otwartych.</p>'; return; }
+    wybraneZadanie = e.id;
+    var lista = widoczne();
+    var html = '<div class="pasek-narz" style="margin-bottom:8px"><label>Zadanie: <select id="wyb-zad">' +
+      K.otwarte.map(function(x){
+        var brak = lista.filter(function(p){ return typeof p.ocena[x.id] !== "number"; }).length;
+        return '<option value="' + x.id + '"' + (x.id === e.id ? ' selected' : '') + '>' + esc(x.tytul) + (brak ? ' – do oceny: ' + brak : ' ✓') + '</option>';
+      }).join("") + '</select></label><label><input type="checkbox" id="tylko-nieoc"' + (rysujZadania.tylko ? ' checked' : '') + '> tylko nieocenione</label></div>' +
+      '<div class="klucz"><b>Klucz:</b> ' + esc(e.klucz) + '</div>';
+    var pokaz = lista.filter(function(p){ return !rysujZadania.tylko || typeof p.ocena[e.id] !== "number"; });
+    if (!pokaz.length) html += '<p>Brak prac do pokazania.</p>';
+    pokaz.forEach(function(p){
+      html += '<div class="el"><h3>' + esc(p.imie || "(bez nazwiska)") + ' <span style="font-weight:400;color:#666">· ' + esc(p.klasa) + '</span>' +
+        (kontrola(p) && kontrola(p).wyjscia.length ? ' <span class="tag wyj">wyjścia: ' + kontrola(p).wyjscia.length + '</span>' : '') + '</h3>' +
+        pokazOdp(p, e) + przyciski(p, e) + '</div>';
+    });
+    $("widok").innerHTML = html;
+    podepnijPrzyciski();
+    $("wyb-zad").onchange = function(){ wybraneZadanie = this.value; rysuj(); };
+    $("tylko-nieoc").onchange = function(){ rysujZadania.tylko = this.checked; rysuj(); };
+  }
+
+  function csv(){
+    var w = [["Uczeń","Klasa","Temat","Test","Oddano","Zamknięte","Otwarte","Suma","Max","Procent","Ocenione w całości","Wyjścia ze strony","Czas poza stroną (s)"]];
+    widoczne().forEach(function(p){
+      var r = wynik(p), k = kontrola(p);
+      w.push([p.imie, p.klasa, kat(p.test).temat, kat(p.test).nazwa, new Date(p.oddano).toLocaleString("pl-PL"), r.auto, r.otw, r.suma, r.max, r.proc,
+        r.gotowe ? "tak" : "nie", k ? k.wyjscia.length : "", k ? sumaPoza(k) : ""]);
+    });
+    var tekst = "﻿" + w.map(function(r){ return r.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(";"); }).join("\r\n");
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([tekst], {type:"text/csv;charset=utf-8"}));
+    a.download = "Wyniki" + (f.test ? " - " + kat(f.test).temat + " - " + kat(f.test).nazwa : f.temat ? " - " + f.temat : "") + (f.klasa ? " - " + f.klasa : "") + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // ---------- zdarzenia ----------
+  function zaloguj(){
+    var h = $("haslo").value;
+    if (!ADRES){ $("kom-log").textContent = "Brak adresu skryptu Google (budowa/ustawienia.json)."; return; }
+    $("btn-zaloguj").disabled = true; $("kom-log").textContent = "Łączenie…";
+    pobierz(h).catch(function(e){ $("kom-log").textContent = e.message || "Nie udało się połączyć."; $("status").textContent = ""; })
+      .then(function(){ $("btn-zaloguj").disabled = false; });
+  }
+  $("btn-zaloguj").onclick = zaloguj;
+  $("haslo").addEventListener("keydown", function(e){ if (e.key === "Enter") zaloguj(); });
+  $("btn-odswiez").onclick = function(){ pobierz(haslo()).catch(function(e){ komunikat(e.message, true); }); };
+  $("btn-csv").onclick = csv;
+  $("btn-wyloguj").onclick = function(){ try { sessionStorage.removeItem(SESJA); } catch(e){} location.reload(); };
+  $("filtr-test").onchange = function(){ f.test = this.value; wybrany = null; zapiszFiltry(); rysuj(); };
+  $("filtr-klasa").onchange = function(){ f.klasa = this.value; wybrany = null; zapiszFiltry(); rysuj(); };
+  $("filtr-imie").oninput = function(){ f.imie = this.value; wybrany = null; zapiszFiltry(); rysuj(); };
+  $("sortuj").onchange = function(){ f.pole = this.value; f.kier = 1; zapiszFiltry(); rysuj(); };
+  $("btn-kierunek").onclick = function(){ f.kier = -f.kier; zapiszFiltry(); rysuj(); };
+  document.querySelectorAll("#zakladki button").forEach(function(b){ b.onclick = function(){ widok = b.dataset.widok; wybrany = null; rysuj(); }; });
+
+  if (haslo() && ADRES) pobierz(haslo()).catch(function(){ $("status").textContent = ""; });
+})();
+</script>
+</body>
+</html>
