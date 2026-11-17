@@ -58,6 +58,11 @@
   .tag.do{background:var(--warnbg);color:var(--warn)} .tag.gotowe{background:var(--okbg);color:var(--ok)}
   .tag.wyj{background:var(--badbg);color:var(--bad);font-weight:700}
   .tag.test{background:#e3e8f4;color:#23407a}
+  .tag.war{background:#f1e9d8;color:#6b4a12;font-weight:700}
+  .pogl{list-style:none;margin:4px 0;padding:0;font-size:14px}
+  .pogl li{padding:2px 0}
+  .pogl .traf{color:var(--ok);font-weight:700} .pogl .zle{color:var(--bad);font-weight:700} .pogl .brak{color:#888}
+  .sugestia{font-size:13px;background:#eef2f9;border-radius:6px;padding:4px 10px;margin:4px 0;display:inline-block}
   .wyjscia{background:var(--badbg);border-left:3px solid var(--bad);padding:8px 12px;margin:10px 0 4px}
   .wyjscia.czysto{background:var(--okbg);border-color:var(--ok)}
   .wyjscia ol{margin:4px 0 0;padding-left:22px}
@@ -180,7 +185,30 @@
   function testyTematu(){ return KATALOG.filter(function(k){ return !f.temat || k.temat === f.temat; }); }
 
   // ---------- punktacja ----------
-  function kl(p){ return TESTY[p.test] && TESTY[p.test].klucz; }
+  // Test może mieć warianty klucza (np. osobny dla każdego klubu): wtedy klucz.warianty[odpowiedź z pola klucz.pole].
+  function kl(p){
+    var k = TESTY[p.test] && TESTY[p.test].klucz;
+    if (!k || !k.warianty) return k;
+    return k.warianty[p.odp[k.pole]] || null;
+  }
+  function tagWar(p){
+    var k = TESTY[p.test] && TESTY[p.test].klucz;
+    if (!k || !k.warianty) return "";
+    var w = kl(p); return ' <span class="tag war">' + esc(w ? w.skrot : "?") + '</span>';
+  }
+  // Pierwszy wariant – do nazw zadań w widoku „Ocenianie po zadaniach” (id zadań są we wszystkich wariantach takie same).
+  function kluczTestu(id){
+    var k = TESTY[id] && TESTY[id].klucz;
+    return k && k.warianty ? k.warianty[Object.keys(k.warianty)[0]] : k;
+  }
+  // Zadanie z wieloma zaznaczeniami: sugestia = (trafione − błędne) / liczba pasujących.
+  function sugestiaWyboru(p, e){
+    var zazn = (p.odp[e.pola[0]] || "").split(",").filter(Boolean), traf = 0, zle = 0;
+    zazn.forEach(function(x){ if (e.pasujace.indexOf(x) >= 0) traf++; else zle++; });
+    var s = (traf - zle) / e.pasujace.length, progi = e.progi || [[0.85, 4], [0.65, 3], [0.45, 2], [0.25, 1]], pkt = 0;
+    for (var i = 0; i < progi.length; i++) if (s >= progi[i][0]){ pkt = progi[i][1]; break; }
+    return {zazn:zazn, traf:traf, zle:zle, pkt:pkt};
+  }
   function maxEl(e){ return e.max || 1; }
   function punktyAuto(p, g){
     var n = 0;
@@ -232,7 +260,8 @@
       if (!j.ok) throw new Error(j.blad === "haslo" ? "Nieprawidłowe hasło." : "Błąd serwera: " + j.blad);
       TESTY = j.testy || {}; OTWARTE = j.otwarte || {}; KODY = j.kody || {};
       prace = j.prace.filter(function(p){ return TESTY[p.test]; })
-        .map(function(p){ p.odp = p.odp || {}; p.ocena = p.ocena || {}; return p; });
+        .map(function(p){ p.odp = p.odp || {}; p.ocena = p.ocena || {}; return p; })
+        .filter(function(p){ return kl(p); });
       try { sessionStorage.setItem(SESJA, h); } catch(e){}
       $("ekran-logowania").hidden = true; $("ekran-panelu").hidden = false;
       $("status").textContent = "Pobrano: " + new Date().toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"});
@@ -407,7 +436,7 @@
     lista.forEach(function(p){
       var w = wynik(p), d = new Date(p.oddano);
       html += '<tr class="wiersz" data-id="' + esc(p.test + "|" + p.id) + '"><td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
-        '<td><span class="tag test">' + esc(kat(p.test).nazwa) + '</span></td>' +
+        '<td><span class="tag test">' + esc(kat(p.test).nazwa) + '</span>' + tagWar(p) + '</td>' +
         '<td>' + d.toLocaleDateString("pl-PL") + ' ' + d.toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"}) + '</td>' +
         '<td class="liczba">' + w.auto + ' / ' + w.autoMax + '</td>' +
         '<td class="liczba">' + w.otw + ' / ' + w.otwMax + (w.gotowe ? '' : ' <span class="pusta">(' + w.ocenione + ' ocen.)</span>') + '</td>' +
@@ -429,7 +458,22 @@
     return /_r$/.test(n) ? "Rozstrzygnięcie: " : /_u$/.test(n) ? "Uzasadnienie: " : "";
   }
   function pokazOdp(p, e){
-    return e.pola.map(function(n){
+    if (e.typ === "wybor"){
+      var s = sugestiaWyboru(p, e), lista = TESTY[p.test].klucz.opcje || {};
+      var li = Object.keys(lista).map(function(id){
+        var z = s.zazn.indexOf(id) >= 0, pas = e.pasujace.indexOf(id) >= 0;
+        if (!z && !pas) return "";
+        return '<li class="' + (z && pas ? "traf" : z ? "zle" : "brak") + '">' + (z && pas ? "✓ " : z ? "✗ " : "○ ") + esc(lista[id]) + '</li>';
+      }).join("");
+      return '<ul class="pogl">' + li + '</ul><div class="sugestia">✓ trafione: ' + s.traf + ' z ' + e.pasujace.length + ' · ✗ błędne: ' + s.zle +
+        ' · ○ pasujące, ale niezaznaczone · <b>sugerowana ocena: ' + s.pkt + ' / ' + maxEl(e) + '</b></div>';
+    }
+    var podp = "";
+    if (e.nazwiska){
+      var n = 0; e.pola.forEach(function(f){ if (bezOgonkow(p.odp[f] || "").indexOf(e.nazwiska[f]) >= 0) n++; });
+      podp = '<div class="sugestia">Rozpoznane nazwiska: <b>' + n + ' / ' + e.pola.length + '</b></div>';
+    }
+    return podp + e.pola.map(function(n){
       var v = (p.odp[n] || "").trim(), lab = etykieta(e, n);
       return '<div class="odp">' + (lab ? '<span class="lab">' + esc(lab) + '</span>' : '') + (v ? esc(v) : '<span class="pusta">brak odpowiedzi</span>') + '</div>';
     }).join("");
@@ -473,7 +517,7 @@
       '<button id="n-nast"' + (i >= 0 && i < lista.length - 1 ? '' : ' disabled') + '>Następny ›</button>' +
       '<button id="n-nieoc">Następny nieoceniony</button><span style="flex:1"></span><button id="n-usun">Usuń pracę</button></div>' +
       '<h2 style="margin:4px 0">' + esc(p.imie || "(bez nazwiska)") + ' <span style="font-weight:400;color:#666">· ' + esc(p.klasa) + '</span></h2>' +
-      '<p style="margin:0 0 6px"><span class="tag test">' + esc(kat(p.test).temat + " – " + kat(p.test).nazwa) + '</span></p>' +
+      '<p style="margin:0 0 6px"><span class="tag test">' + esc(kat(p.test).temat + " – " + kat(p.test).nazwa) + '</span>' + tagWar(p) + '</p>' +
       '<p class="podsum" id="podsum-ucznia"></p>' + opisWyjsc(p);
     html += '<h3>Zadania zamknięte (sprawdzone automatycznie)</h3><table class="auto">';
     K.auto.forEach(function(g){
@@ -516,7 +560,7 @@
     if (!f.test){
       $("widok").innerHTML = '<p>Wybierz test (kafelek powyżej albo lista „Test”), aby oceniać jedno zadanie u wszystkich uczniów.</p>'; return;
     }
-    var K = TESTY[f.test] && TESTY[f.test].klucz;
+    var K = kluczTestu(f.test), warianty = !!(TESTY[f.test] && TESTY[f.test].klucz.warianty);
     if (!K){ $("widok").innerHTML = '<p>Brak klucza dla tego testu.</p>'; return; }
     var e = K.otwarte.find(function(x){ return x.id === wybraneZadanie; }) || K.otwarte[0];
     if (!e){ $("widok").innerHTML = '<p>Ten test nie ma zadań otwartych.</p>'; return; }
@@ -527,13 +571,14 @@
         var brak = lista.filter(function(p){ return typeof p.ocena[x.id] !== "number"; }).length;
         return '<option value="' + x.id + '"' + (x.id === e.id ? ' selected' : '') + '>' + esc(x.tytul) + (brak ? ' – do oceny: ' + brak : ' ✓') + '</option>';
       }).join("") + '</select></label><label><input type="checkbox" id="tylko-nieoc"' + (rysujZadania.tylko ? ' checked' : '') + '> tylko nieocenione</label></div>' +
-      '<div class="klucz"><b>Klucz:</b> ' + esc(e.klucz) + '</div>';
+      (warianty ? '<p class="pusta">Klucz zależy od wariantu (np. klubu) – jest pokazany przy każdej pracy.</p>' : '<div class="klucz"><b>Klucz:</b> ' + esc(e.klucz) + '</div>');
     var pokaz = lista.filter(function(p){ return !rysujZadania.tylko || typeof p.ocena[e.id] !== "number"; });
     if (!pokaz.length) html += '<p>Brak prac do pokazania.</p>';
     pokaz.forEach(function(p){
-      html += '<div class="el"><h3>' + esc(p.imie || "(bez nazwiska)") + ' <span style="font-weight:400;color:#666">· ' + esc(p.klasa) + '</span>' +
+      var ep = warianty ? (kl(p).otwarte.find(function(x){ return x.id === e.id; }) || e) : e;
+      html += '<div class="el"><h3>' + esc(p.imie || "(bez nazwiska)") + ' <span style="font-weight:400;color:#666">· ' + esc(p.klasa) + '</span>' + tagWar(p) +
         (kontrola(p) && kontrola(p).wyjscia.length ? ' <span class="tag wyj">wyjścia: ' + kontrola(p).wyjscia.length + '</span>' : '') + '</h3>' +
-        pokazOdp(p, e) + przyciski(p, e) + '</div>';
+        pokazOdp(p, ep) + (warianty ? '<div class="klucz">' + esc(ep.klucz) + '</div>' : '') + przyciski(p, ep) + '</div>';
     });
     $("widok").innerHTML = html;
     podepnijPrzyciski();
@@ -545,7 +590,7 @@
     var w = [["Uczeń","Klasa","Temat","Test","Oddano","Zamknięte","Otwarte","Suma","Max","Procent","Ocenione w całości","Wyjścia ze strony","Czas poza stroną (s)"]];
     widoczne().forEach(function(p){
       var r = wynik(p), k = kontrola(p);
-      w.push([p.imie, p.klasa, kat(p.test).temat, kat(p.test).nazwa, new Date(p.oddano).toLocaleString("pl-PL"), r.auto, r.otw, r.suma, r.max, r.proc,
+      w.push([p.imie, p.klasa, kat(p.test).temat, kat(p.test).nazwa + (tagWar(p) ? " – " + kl(p).skrot : ""), new Date(p.oddano).toLocaleString("pl-PL"), r.auto, r.otw, r.suma, r.max, r.proc,
         r.gotowe ? "tak" : "nie", k ? k.wyjscia.length : "", k ? sumaPoza(k) : ""]);
     });
     var tekst = "﻿" + w.map(function(r){ return r.map(function(c){ return '"' + String(c).replace(/"/g, '""') + '"'; }).join(";"); }).join("\r\n");
