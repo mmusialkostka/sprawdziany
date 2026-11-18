@@ -65,6 +65,12 @@
   .tag.do{background:var(--warnbg);color:var(--warn)} .tag.gotowe{background:var(--okbg);color:var(--ok)}
   .tag.wyj{background:var(--badbg);color:var(--bad);font-weight:700}
   .tag.test{background:#e3e8f4;color:#23407a}
+  .masowe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#fbeaea;border:1px solid #e3b4b4;border-radius:8px;padding:8px 12px;margin:0 0 10px}
+  .masowe[hidden]{display:none}
+  .masowe button.usun{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:700}
+  td.zazn,th.zazn{width:30px;text-align:center}
+  td.zazn input,th.zazn input{width:18px;height:18px;cursor:pointer}
+  tr.wiersz.wybrana{background:#fff6e0}
   .tag.ank{background:#e8f0e3;color:#2f5a1f}
   .ank-tab td{padding:4px 8px} .ank-tab .pasek-proc{display:inline-block;height:10px;background:#9db7d8;border-radius:3px;vertical-align:middle;margin-right:6px}
   .tag.war{background:#f1e9d8;color:#6b4a12;font-weight:700}
@@ -175,7 +181,7 @@
   var ADRES = window.SKRYPT;
   var KATALOG = window.KATALOG || [];
   var SESJA = "spr-panel-haslo", FILTRY = "spr-panel-filtry";
-  var TESTY = {}, OTWARTE = {}, KODY = {}, prace = [], widok = "lista", wybrany = null, wybraneZadanie = null, qrTest = null;
+  var TESTY = {}, OTWARTE = {}, KODY = {}, prace = [], zaznaczone = {}, widok = "lista", wybrany = null, wybraneZadanie = null, qrTest = null;
 
   var $ = function(id){ return document.getElementById(id); };
   function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
@@ -462,7 +468,14 @@
     if (!lista.length){ $("widok").innerHTML = "<p>Brak prac dla wybranych filtrów.</p>"; return; }
     var doOceny = lista.filter(function(p){ return !wynik(p).gotowe; }).length;
     var kol = [["Uczeń","nazwisko"],["Klasa","klasa"],["Test","test"],["Oddano","oddano"],["Zamknięte",""],["Otwarte",""],["Suma","suma"],["%","suma"],["Wyjścia","wyjscia"],["Status","status"]];
-    var html = '<p class="podsum"><span>Prace: <b>' + lista.length + '</b></span><span>Do dokończenia oceny: <b>' + doOceny + '</b></span></p><table><tr>' +
+    // zaznaczenia tylko dla prac, które nadal istnieją
+    Object.keys(zaznaczone).forEach(function(k){ if (!znajdzPrace(k)) delete zaznaczone[k]; });
+    var ileZazn = Object.keys(zaznaczone).length, wszystkie = lista.every(function(p){ return zaznaczone[p.test + "|" + p.id]; });
+    var html = '<p class="podsum"><span>Prace: <b>' + lista.length + '</b></span><span>Do dokończenia oceny: <b>' + doOceny + '</b></span></p>' +
+      '<div class="masowe" id="masowe"' + (ileZazn ? '' : ' hidden') + '><span>Zaznaczone prace: <b>' + ileZazn + '</b></span>' +
+      '<button class="usun" id="btn-usun-zazn">Usuń zaznaczone</button><button id="btn-odznacz">Odznacz wszystkie</button>' +
+      '<span class="pusta">Przed usunięciem warto pobrać wyniki (CSV).</span></div>' +
+      '<table><tr><th class="zazn"><input type="checkbox" id="zazn-wszystkie" title="Zaznacz wszystkie widoczne"' + (wszystkie ? ' checked' : '') + '></th>' +
       kol.map(function(k, i){
         var akt = k[1] && k[1] === f.pole && i !== 7, c = (i >= 4 && i <= 8 ? "liczba" : "") + (akt ? " sort-akt" : "");
         return '<th' + (c ? ' class="' + c.trim() + '"' : '') + (k[1] ? ' data-sort="' + k[1] + '" title="Sortuj"' : '') + '>' + k[0] + (akt ? (f.kier > 0 ? " ▲" : " ▼") : "") + '</th>';
@@ -470,14 +483,14 @@
     lista.forEach(function(p){
       var w = wynik(p), d = new Date(p.oddano), ank = ankieta(p);
       if (ank){
-        html += '<tr class="wiersz" data-id="' + esc(p.test + "|" + p.id) + '"><td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
+        html += wierszStart(p) + '<td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
           '<td><span class="tag test">' + esc(kat(p.test).nazwa) + '</span></td>' +
           '<td>' + d.toLocaleDateString("pl-PL") + ' ' + d.toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"}) + '</td>' +
           '<td class="liczba" colspan="4" style="text-align:left">' + esc(ank.filter(function(q){ return !q.tekst; }).map(function(q){ return wartoscAnk(q, p.odp[q.pole]); }).join(" · ")) + '</td>' +
           '<td class="liczba">' + tagWyjsc(p) + '</td><td><span class="tag ank">ankieta</span></td></tr>';
         return;
       }
-      html += '<tr class="wiersz" data-id="' + esc(p.test + "|" + p.id) + '"><td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
+      html += wierszStart(p) + '<td>' + esc(p.imie || "(bez nazwiska)") + '</td><td>' + esc(p.klasa) + '</td>' +
         '<td><span class="tag test">' + esc(kat(p.test).nazwa) + '</span>' + tagWar(p) + '</td>' +
         '<td>' + d.toLocaleDateString("pl-PL") + ' ' + d.toLocaleTimeString("pl-PL", {hour:"2-digit", minute:"2-digit"}) + '</td>' +
         '<td class="liczba">' + w.auto + ' / ' + w.autoMax + '</td>' +
@@ -491,8 +504,51 @@
       th.onclick = function(){ var pole = th.dataset.sort; f.kier = pole === f.pole ? -f.kier : 1; f.pole = pole; zapiszFiltry(); rysuj(); };
     });
     $("widok").querySelectorAll("tr.wiersz").forEach(function(tr){
-      tr.onclick = function(){ wybrany = tr.dataset.id; rysuj(); window.scrollTo(0, $("zakladki").offsetTop - 10); };
+      tr.onclick = function(e){
+        if (e.target.closest("td.zazn")){ // kliknięcie w pole zaznaczenia – bez otwierania pracy
+          var c = tr.querySelector("td.zazn input"); if (e.target !== c) c.checked = !c.checked;
+          if (c.checked) zaznaczone[tr.dataset.id] = true; else delete zaznaczone[tr.dataset.id];
+          rysujListe(); return;
+        }
+        wybrany = tr.dataset.id; rysuj(); window.scrollTo(0, $("zakladki").offsetTop - 10);
+      };
     });
+    $("zazn-wszystkie").onclick = function(){
+      var zaz = this.checked;
+      lista.forEach(function(p){ var k = p.test + "|" + p.id; if (zaz) zaznaczone[k] = true; else delete zaznaczone[k]; });
+      rysujListe();
+    };
+    if ($("btn-odznacz")) $("btn-odznacz").onclick = function(){ zaznaczone = {}; rysujListe(); };
+    if ($("btn-usun-zazn")) $("btn-usun-zazn").onclick = usunZaznaczone;
+  }
+  function wierszStart(p){
+    var k = p.test + "|" + p.id, z = !!zaznaczone[k];
+    return '<tr class="wiersz' + (z ? ' wybrana' : '') + '" data-id="' + esc(k) + '"><td class="zazn"><input type="checkbox" aria-label="Zaznacz pracę"' + (z ? ' checked' : '') + '></td>';
+  }
+  // Usuwa zaznaczone prace: jedno zapytanie na każdy test (skrypt usuwa wiele wierszy naraz).
+  function usunZaznaczone(){
+    var klucze = Object.keys(zaznaczone), wg = {};
+    if (!klucze.length) return;
+    klucze.forEach(function(k){ var p = znajdzPrace(k); if (p) (wg[p.test] = wg[p.test] || []).push(p.id); });
+    var opis = Object.keys(wg).map(function(t){ return kat(t).nazwa + ": " + wg[t].length; }).join("\n");
+    if (!confirm("Usunąć " + klucze.length + " zaznaczon" + (klucze.length === 1 ? "ą pracę" : klucze.length < 5 ? "e prace" : "ych prac") + "?\n\n" + opis +
+                 "\n\nTej operacji nie można cofnąć.")) return;
+    $("btn-usun-zazn").disabled = true; komunikat("Usuwanie…");
+    var testy = Object.keys(wg), usuniete = 0;
+    testy.reduce(function(obietnica, t){
+      return obietnica.then(function(){
+        return zapytanie({akcja:"usun", haslo:haslo(), test:t, ids:wg[t]}).then(function(j){
+          if (!j.ok) throw new Error(j.blad);
+          prace = prace.filter(function(x){ return !(x.test === t && wg[t].indexOf(x.id) >= 0); });
+          wg[t].forEach(function(id){ delete zaznaczone[t + "|" + id]; });
+          usuniete += wg[t].length;
+        });
+      });
+    }, Promise.resolve()).then(function(){
+      komunikat("Usunięto prace: " + usuniete + ".");
+    }).catch(function(e){
+      komunikat("Nie udało się usunąć wszystkich prac (" + e.message + "). Usunięto: " + usuniete + ". Odśwież i spróbuj ponownie.", true);
+    }).then(function(){ rysuj(); });
   }
 
   function etykieta(e, n){
